@@ -123,9 +123,9 @@
         <p>Train your focus. Read once, then recall.</p>
         <label>Difficulty: </label>
         <select id="difficulty" style="padding: 8px; border-radius: 5px; margin-bottom: 20px;">
-            <option value="easy">Easy (Kids)</option>
-            <option value="medium" selected>Medium (Standard)</option>
-            <option value="hard">Hard (Advanced)</option>
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
         </select>
         <br>
         <button onclick="startGame()">Start Game</button>
@@ -203,61 +203,78 @@
     let phaseScores = [];
     let timer;
 
+    // Dark Mode Toggle
     function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
 
-    // --- UPDATED SPEECH LOGIC ---
-    let recognition;
-    
-    function initSpeech() {
-        window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!window.SpeechRecognition) {
-            alert("Speech recognition is not supported in this browser. Try Chrome or Edge.");
-            return null;
-        }
-        const rec = new window.SpeechRecognition();
-        rec.continuous = false;
-        rec.interimResults = false;
-        rec.lang = 'en-US';
+// --- FIXED SPEECH LOGIC ---
+let recognition;
+let isListening = false;
 
-        rec.onresult = (event) => {
-            const text = event.results[0][0].transcript;
-            document.getElementById('user-input').value = text;
-        };
+function initSpeech() {
+    window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        rec.onend = () => {
-            const btn = document.getElementById('voice-btn');
-            btn.innerText = "🎤 Speak Answer";
-            btn.classList.remove('recording');
-        };
-
-        rec.onerror = (event) => {
-            console.error("Speech Error: ", event.error);
-            if(event.error === 'not-allowed') {
-                alert("Microphone access denied. If you are running this as a local file, browsers often block the mic. Upload to GitHub Pages to fix this!");
-            }
-        };
-
-        return rec;
+    if (!window.SpeechRecognition) {
+        alert("Speech recognition is not supported in this browser. Try Chrome or Edge.");
+        return null;
     }
 
-    function handleVoice() {
-        if (!recognition) {
-            recognition = initSpeech();
-        }
-        
-        if (recognition) {
-            const btn = document.getElementById('voice-btn');
-            try {
-                recognition.start();
-                btn.innerText = "Listening...";
-                btn.classList.add('recording');
-            } catch(e) { 
-                console.log("Already listening..."); 
-            }
-        }
-    }
+    recognition = new window.SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
 
-    // --- GAME LOGIC ---
+    recognition.onstart = () => {
+        isListening = true;
+        const btn = document.getElementById('voice-btn');
+        btn.innerText = "Listening...";
+        btn.classList.add('recording');
+    };
+
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        const input = document.getElementById('user-input');
+
+        // Append instead of overwrite
+        input.value = input.value 
+            ? input.value + " " + text 
+            : text;
+    };
+
+    recognition.onend = () => {
+        isListening = false;
+        const btn = document.getElementById('voice-btn');
+        btn.innerText = "🎤 Speak Answer";
+        btn.classList.remove('recording');
+    };
+
+    recognition.onerror = (event) => {
+        console.error("Speech Error:", event.error);
+        isListening = false;
+
+        if (event.error === 'not-allowed') {
+            alert("Microphone access denied. Use HTTPS (GitHub Pages) and allow mic permissions.");
+        }
+    };
+}
+
+function handleVoice() {
+    if (!recognition) initSpeech();
+    if (!recognition) return;
+
+    try {
+        if (isListening) {
+            recognition.stop(); // toggle off
+        } else {
+            recognition.start(); // start
+        }
+    } catch (e) {
+        console.log("Restarting recognition...");
+        recognition.stop();
+        setTimeout(() => recognition.start(), 200);
+    }
+}
+
+    // Game Logic
     function startGame() {
         const diff = document.getElementById('difficulty').value;
         const pool = content[diff];
@@ -281,7 +298,7 @@
         document.getElementById('text-to-read').innerText = text;
         document.getElementById('phase-indicator').innerText = `Phase ${currentPhase} of 5`;
 
-        const mult = (diff === 'hard') ? 9 : (diff === 'medium' ? 6 : 4);
+        const mult = (diff === 'hard') ? 8 : (diff === 'medium' ? 6 : 4);
         let timeLeft = currentPhase * mult;
 
         document.getElementById('timer-display').innerText = `Time: ${timeLeft}s`;
