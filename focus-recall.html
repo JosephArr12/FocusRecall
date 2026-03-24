@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FocusRecall - Train Your Reading Memory</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --bg: #f4f7f6;
+            --text: #333;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; text-align: center; }
+        .hidden { display: none; }
+        .timer { font-weight: bold; color: #e74c3c; font-size: 1.2rem; margin-bottom: 10px; }
+        .text-display { font-size: 1.1rem; line-height: 1.6; margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 5px solid var(--primary); text-align: left; }
+        textarea { width: 100%; height: 100px; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; margin-bottom: 15px; }
+        button { background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-size: 1rem; transition: 0.3s; }
+        button:hover { background: #357abd; }
+        .score-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>FocusRecall</h1>
+    
+    <div id="menu-screen">
+        <p>Train your brain to stop re-reading. Memorize the text before it disappears.</p>
+        <label for="difficulty">Select Difficulty:</label>
+        <select id="difficulty" style="margin: 10px; padding: 5px;">
+            <option value="easy">Easy (Kids/Short Sentences)</option>
+            <option value="medium" selected>Medium (Average Reader)</option>
+            <option value="hard">Hard (Advanced Vocabulary)</option>
+        </select>
+        <br><br>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+
+    <div id="play-screen" class="hidden">
+        <div id="phase-indicator">Phase 1 of 5</div>
+        <div class="timer" id="timer-display">Time: --</div>
+        
+        <div id="read-section">
+            <div class="text-display" id="text-to-read"></div>
+        </div>
+
+        <div id="type-section" class="hidden">
+            <p>Type what you just read:</p>
+            <textarea id="user-input" placeholder="Type here..."></textarea>
+            <br>
+            <button onclick="submitAttempt()">Submit</button>
+        </div>
+    </div>
+
+    <div id="results-screen" class="hidden">
+        <h2>Results</h2>
+        <div id="scores-list"></div>
+        <h3 id="final-total"></h3>
+        <button onclick="resetGame()">Try Another Paragraph</button>
+    </div>
+</div>
+
+<script>
+const content = {
+    easy: [
+        ["The cat sat on the mat.", "It was a sunny day.", "Birds like to sing songs.", "The blue ball bounced high.", "He ate a green apple.", "Dogs love to play catch.", "The sun went down."],
+        ["A big red bus stopped.", "The grass is very green.", "I like to eat pizza.", "My mom is very kind.", "The fish swims in water.", "Rain falls from the clouds.", "The stars shine at night."],
+        ["The clock ticks on the wall.", "Flowers grow in the garden.", "We play at the park.", "The milk is in the cup.", "A small bird built a nest.", "The snow is cold and white.", "I wear a hat today."],
+        ["The frog jumped in the pond.", "I have a yellow pencil.", "The cake tastes very sweet.", "The wind blows the leaves.", "My friend has a bike.", "A rabbit hops in the grass.", "The moon is big and round."],
+        ["The boat floats on the lake.", "I can see the tall trees.", "She has a pretty dress.", "The bell rings for school.", "We saw a brown bear.", "The soup is hot and good.", "Brush your teeth every day."],
+        ["The fire is warm and bright.", "I like to read my book.", "The grapes are purple.", "A bee flies to a flower.", "The car goes fast.", "The sand is at the beach.", "I help my dad wash the car."],
+        ["The spider made a web.", "The sky is clear and blue.", "I lost my blue shoe.", "The elephant is very large.", "We go to sleep at night.", "The rain makes puddles.", "Look at the colorful rainbow."],
+        ["The duck says quack.", "I jump in the leaves.", "The orange is juicy.", "The kitten is very soft.", "I can run very fast.", "The tree has green leaves.", "The water is cold."],
+        ["The plane flies high.", "I love to eat grapes.", "The turtle moves slowly.", "The farm has many cows.", "The barn is painted red.", "The grass feels wet.", "The sun makes me happy."],
+        ["The ball is under the bed.", "The bird lives in a tree.", "The hat is on my head.", "The dog wags its tail.", "The milk is cold.", "The flower smells nice.", "The clock says it is noon."]
+    ],
+    medium: [
+        ["Reading every day improves your focus and memory.", "Technological advances are changing how we interact.", "The climate varies significantly across different continents.", "Learning a new language requires consistent daily practice.", "Sustainable living helps protect the environment for kids.", "Ocean currents play a major role in global weather.", "Healthy eating provides the energy needed for work."],
+        ["Exercise is essential for maintaining a healthy heart.", "Many people prefer drinking coffee in the morning.", "The library is a quiet place to study and learn.", "Volunteers play a vital role in local communities.", "Space exploration helps us understand our solar system.", "Digital privacy is a growing concern for internet users.", "Urban planning can reduce traffic in busy cities."],
+        ["Music has the power to influence our daily mood.", "Historical documents provide insight into the past.", "Effective communication is key to professional success.", "Wildfire prevention is crucial during the dry summer.", "Modern smartphones are more powerful than old computers.", "Regular sleep patterns improve overall mental health.", "Art galleries showcase the creativity of local artists."],
+        ["Public transportation reduces the carbon footprint of cities.", "Learning to cook is a valuable skill for everyone.", "The internet has revolutionized the way we access info.", "Small businesses are the backbone of the economy.", "Protecting endangered species preserves biodiversity.", "A good education opens many doors for the future.", "Gardening is a relaxing hobby for many people."],
+        ["Recycling helps reduce the amount of waste in landfills.", "Teamwork is necessary for solving complex problems.", "The solar system consists of eight major planets.", "Yoga is a great way to improve your flexibility.", "Traveling to new places broadens your perspective.", "Writing in a journal can help clear your mind.", "Modern medicine has increased the average lifespan."],
+        ["Forests act as the lungs of our planet.", "Investing in stocks can be a way to build wealth.", "Social media allows us to stay connected with friends.", "Clean water is a basic human right for everyone.", "The scientific method is used to test new ideas.", "Photography captures special moments in time.", "Biking is a healthy alternative to driving a car."],
+        ["Learning history prevents us from repeating mistakes.", "Strong leadership is required during times of crisis.", "The atmosphere protects us from harmful radiation.", "Volunteering at a shelter is a rewarding experience.", "Critical thinking is an essential skill for students.", "Renewable energy sources are becoming more popular.", "Good nutrition is vital for a child's development."],
+        ["The invention of the printing press changed the world.", "Wildlife conservation requires global cooperation.", "Practicing mindfulness reduces stress and anxiety.", "The economy is influenced by many different factors.", "Artificial intelligence is being used in many fields.", "A balanced diet includes fruits and vegetables.", "Reading fiction can increase your empathy for others."],
+        ["Deep sea exploration reveals new forms of life.", "Effective time management increases productivity.", "The legal system is designed to provide justice.", "Culture is expressed through art and language.", "Physical activity is good for both body and mind.", "Learning to play an instrument takes patience.", "The weather is influenced by atmospheric pressure."],
+        ["The discovery of fire was a turning point for humans.", "Electric cars are becoming more common on the roads.", "Architecture combines both art and engineering.", "Mental health is just as important as physical health.", "Community gardens provide fresh produce for locals.", "Space telescopes allow us to see distant galaxies.", "Ocean pollution is a major threat to marine life."]
+    ],
+    hard: [
+        ["The ephemeral nature of digital communication complicates archival efforts.", "Metacognition allows individuals to monitor their own cognitive processes.", "Socioeconomic disparities often dictate the accessibility of higher education.", "Quantum entanglement suggests a profound interconnection within the universe.", "The juxtaposition of classical art and modern architecture is striking.", "Pragmatism remains a cornerstone of effective organizational leadership.", "Nuanced perspectives are essential when navigating complex geopolitical issues."],
+        ["The inherent ambiguity of the law requires judicial interpretation.", "Macroeconomic fluctuations can destabilize emerging global markets.", "Philosophical inquiries into the nature of reality are perennial.", "Biodiversity loss poses a significant threat to global food security.", "The integration of artificial intelligence requires rigorous ethical oversight.", "Cognitive dissonance occurs when holding two conflicting beliefs.", "Subtle linguistic variations can alter the meaning of a text."],
+        ["Structural integrity is paramount in civil engineering projects.", "The proliferation of misinformation undermines democratic institutions.", "Epistemological debates center on the nature and scope of knowledge.", "Sustainable development requires a balance of economic and social goals.", "Aesthetic appreciation is often influenced by cultural paradigms.", "The internal combustion engine revolutionized modern transportation.", "Paradigm shifts in science often encounter initial resistance."],
+        ["The sequestration of carbon is vital for climate mitigation.", "Algorithmic bias can perpetuate systemic inequalities in society.", "Neuroplasticity enables the brain to reorganize itself after injury.", "The convergence of biotechnology and ethics is a major challenge.", "Phenomenological research focuses on lived human experiences.", "The decentralization of finance via blockchain is a nascent trend.", "Implicit biases can unconsciously affect our decision making."],
+        ["The synthesis of organic compounds is a core facet of chemistry.", "Linguistic determinism suggests language shapes our thoughts.", "The stratification of society is often based on wealth.", "Teleological arguments focus on the design and purpose of nature.", "The utilization of renewable resources is imperative for survival.", "Interdisciplinary approaches are required for complex research.", "The manifestation of cultural identity is multifaceted."],
+        ["The ubiquity of smartphones has altered social interactions.", "Cognitive load theory explains how we process information.", "The fragility of global supply chains was recently exposed.", "Existentialism explores the meaning of individual existence.", "The codification of international law is an ongoing process.", "Technological obsolescence occurs at an accelerating rate.", "The redistribution of wealth is a contentious political topic."],
+        ["The amplification of sound requires precise engineering.", "Empirical evidence is the foundation of the scientific method.", "The commodification of data raises significant privacy issues.", "The paradox of choice suggests that more options cause stress.", "The allocation of resources must be handled with care.", "Historical revisionism can provide new insights into the past.", "The complexity of the human genome is still being mapped."],
+        ["The intersectionality of identity informs personal experiences.", "The volatility of the stock market creates financial risk.", "The implementation of new policies requires public support.", "The crystallization of ideas occurs through rigorous debate.", "The exploitation of natural resources leads to degradation.", "The sophistication of cyberattacks is a growing concern.", "The standardization of testing remains a controversial issue."],
+        ["The erosion of coastal regions is accelerated by rising seas.", "The democratization of information has empowered citizens.", "The versatility of graphene makes it a revolutionary material.", "The cultivation of critical thinking is a primary goal of education.", "The manifestation of symptoms varies between individuals.", "The integration of global markets has led to interdependence.", "The validation of scientific theories requires peer review."],
+        ["The preservation of cultural heritage is a global responsibility.", "The nuances of diplomatic negotiations are often hidden.", "The transformation of energy is a fundamental law of physics.", "The proliferation of digital tools has changed the workplace.", "The susceptibility of systems to failure must be analyzed.", "The interpretation of data requires a skeptical mindset.", "The evolution of language is a continuous and dynamic process."]
+    ]
+};
+    let currentParagraph = [];
+    let currentPhase = 1; // 1 to 5 sentences
+    let phaseScores = [];
+    let timer;
+
+    function startGame() {
+        const diff = document.getElementById('difficulty').value;
+        const source = content[diff];
+        // Shuffle and pick 5-7 sentences
+        currentParagraph = [...source].sort(() => 0.5 - Math.random()).slice(0, 5);
+        
+        document.getElementById('menu-screen').classList.add('hidden');
+        document.getElementById('play-screen').classList.remove('hidden');
+        startPhase();
+    }
+
+    function startPhase() {
+        document.getElementById('type-section').classList.add('hidden');
+        document.getElementById('read-section').classList.remove('hidden');
+        document.getElementById('user-input').value = "";
+        
+        const textToShow = currentParagraph.slice(0, currentPhase).join(" ");
+        document.getElementById('text-to-read').innerText = textToShow;
+        document.getElementById('phase-indicator').innerText = `Phase ${currentPhase} of ${currentParagraph.length}`;
+        
+        // Timer: 4 seconds per sentence (adjust as needed)
+        let timeLeft = currentPhase * 5;
+        document.getElementById('timer-display').innerText = `Read Time: ${timeLeft}s`;
+        
+        timer = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer-display').innerText = `Read Time: ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                showTypeSection();
+            }
+        }, 1000);
+    }
+
+    function showTypeSection() {
+        document.getElementById('read-section').classList.add('hidden');
+        document.getElementById('type-section').classList.remove('hidden');
+        document.getElementById('timer-display').innerText = "Typing Phase...";
+    }
+
+    function submitAttempt() {
+        const targetText = currentParagraph.slice(0, currentPhase).join(" ");
+        const userText = document.getElementById('user-input').value;
+        
+        const score = calculateSimilarity(targetText, userText);
+        phaseScores.push({ phase: currentPhase, score: score });
+
+        if (currentPhase < currentParagraph.length) {
+            currentPhase++;
+            startPhase();
+        } else {
+            showResults();
+        }
+    }
+
+    // Simple string comparison for scoring
+    function calculateSimilarity(str1, str2) {
+        const s1 = str1.toLowerCase().replace(/[^\w\s]/g, "");
+        const s2 = str2.toLowerCase().replace(/[^\w\s]/g, "");
+        if (s1 === s2) return 100;
+        
+        const words1 = s1.split(/\s+/);
+        const words2 = s2.split(/\s+/);
+        let matches = 0;
+        words1.forEach(word => {
+            if (words2.includes(word)) matches++;
+        });
+        return Math.round((matches / words1.length) * 100);
+    }
+
+    function showResults() {
+        document.getElementById('play-screen').classList.add('hidden');
+        document.getElementById('results-screen').classList.remove('hidden');
+        
+        const list = document.getElementById('scores-list');
+        list.innerHTML = "";
+        let total = 0;
+        
+        phaseScores.forEach(s => {
+            total += s.score;
+            list.innerHTML += `<div class="score-row"><span>Phase ${s.phase} (${s.phase} Sentences):</span> <b>${s.score}%</b></div>`;
+        });
+        
+        const finalAvg = Math.round(total / phaseScores.length);
+        document.getElementById('final-total').innerText = `Overall Accuracy: ${finalAvg}%`;
+    }
+
+    function resetGame() {
+        currentPhase = 1;
+        phaseScores = [];
+        document.getElementById('results-screen').classList.add('hidden');
+        document.getElementById('menu-screen').classList.remove('hidden');
+    }
+</script>
+
+</body>
+</html>
