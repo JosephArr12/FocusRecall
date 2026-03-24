@@ -206,60 +206,88 @@
     // Dark Mode Toggle
     function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
 
-// --- FIXED SPEECH LOGIC ---
+// --- FIXED SPEECH LOGIC FOR GITHUB PAGES ---
 let recognition;
 let isListening = false;
+let speechInitialized = false;
 
 function initSpeech() {
+    if (speechInitialized) return;
+
     window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!window.SpeechRecognition) {
-        alert("Speech recognition is not supported in this browser. Try Chrome or Edge.");
-        return null;
+        console.warn("Speech recognition is not supported in this browser.");
+        document.getElementById('voice-btn').disabled = true;
+        document.getElementById('voice-btn').innerText = "🎤 Not Supported";
+        return false;
     }
 
-    recognition = new window.SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
+    try {
+        recognition = new window.SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
 
-    recognition.onstart = () => {
-        isListening = true;
-        const btn = document.getElementById('voice-btn');
-        btn.innerText = "Listening...";
-        btn.classList.add('recording');
-    };
+        recognition.onstart = () => {
+            isListening = true;
+            const btn = document.getElementById('voice-btn');
+            btn.innerText = "Listening...";
+            btn.classList.add('recording');
+        };
 
-    recognition.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        const input = document.getElementById('user-input');
+        recognition.onresult = (event) => {
+            if (event.results && event.results.length > 0) {
+                const text = event.results[0][0].transcript;
+                const input = document.getElementById('user-input');
 
-        // Append instead of overwrite
-        input.value = input.value 
-            ? input.value + " " + text 
-            : text;
-    };
+                // Append instead of overwrite
+                input.value = input.value 
+                    ? input.value + " " + text 
+                    : text;
+            }
+        };
 
-    recognition.onend = () => {
-        isListening = false;
-        const btn = document.getElementById('voice-btn');
-        btn.innerText = "🎤 Speak Answer";
-        btn.classList.remove('recording');
-    };
+        recognition.onend = () => {
+            isListening = false;
+            const btn = document.getElementById('voice-btn');
+            if (btn) {
+                btn.innerText = "🎤 Speak Answer";
+                btn.classList.remove('recording');
+            }
+        };
 
-    recognition.onerror = (event) => {
-        console.error("Speech Error:", event.error);
-        isListening = false;
+        recognition.onerror = (event) => {
+            console.error("Speech Error:", event.error);
+            isListening = false;
+            const btn = document.getElementById('voice-btn');
+            if (btn) {
+                btn.innerText = "🎤 Speak Answer";
+                btn.classList.remove('recording');
+            }
 
-        if (event.error === 'not-allowed') {
-            alert("Microphone access denied. Use HTTPS (GitHub Pages) and allow mic permissions.");
-        }
-    };
+            // Handle different error scenarios for GitHub Pages
+            if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+                alert("Microphone permission denied. Please:\n1. Check browser permissions\n2. Refresh the page\n3. Click the microphone icon when prompted");
+            } else if (event.error === 'network') {
+                alert("Network error. Check your connection.");
+            } else if (event.error !== 'no-speech') {
+                console.error("Speech recognition error:", event.error);
+            }
+        };
+
+        speechInitialized = true;
+        return true;
+    } catch (e) {
+        console.error("Failed to initialize speech recognition:", e);
+        return false;
+    }
 }
 
 function handleVoice() {
-    if (!recognition) initSpeech();
-    if (!recognition) return;
+    if (!recognition) {
+        if (!initSpeech()) return;
+    }
 
     try {
         if (isListening) {
@@ -269,8 +297,18 @@ function handleVoice() {
         }
     } catch (e) {
         console.log("Restarting recognition...");
-        recognition.stop();
-        setTimeout(() => recognition.start(), 200);
+        try {
+            recognition.stop();
+            setTimeout(() => {
+                try {
+                    recognition.start();
+                } catch (err) {
+                    console.error("Failed to restart recognition:", err);
+                }
+            }, 200);
+        } catch (err) {
+            console.error("Error during restart:", err);
+        }
     }
 }
 
@@ -284,6 +322,10 @@ function handleVoice() {
         document.getElementById('menu-screen').classList.add('hidden');
         document.getElementById('play-screen').classList.remove('hidden');
         currentPhase = 1; phaseScores = [];
+        
+        // Initialize speech recognition early to request microphone permission
+        initSpeech();
+        
         startPhase();
     }
 
