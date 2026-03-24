@@ -62,6 +62,7 @@
 </div>
 
 <script>
+    // Expanded Content Bank
 const content = {
     easy: [
         ["The cat sat on the mat.", "It was a sunny day.", "Birds like to sing songs.", "The blue ball bounced high.", "He ate a green apple.", "Dogs love to play catch.", "The sun went down."],
@@ -100,16 +101,22 @@ const content = {
         ["The preservation of cultural heritage is a global responsibility.", "The nuances of diplomatic negotiations are often hidden.", "The transformation of energy is a fundamental law of physics.", "The proliferation of digital tools has changed the workplace.", "The susceptibility of systems to failure must be analyzed.", "The interpretation of data requires a skeptical mindset.", "The evolution of language is a continuous and dynamic process."]
     ]
 };
+
     let currentParagraph = [];
-    let currentPhase = 1; // 1 to 5 sentences
+    let currentPhase = 1;
     let phaseScores = [];
     let timer;
 
     function startGame() {
         const diff = document.getElementById('difficulty').value;
-        const source = content[diff];
-        // Shuffle and pick 5-7 sentences
-        currentParagraph = [...source].sort(() => 0.5 - Math.random()).slice(0, 5);
+        const sourceOptions = content[diff];
+        
+        // Randomly pick one of the available paragraphs for that difficulty
+        const randomParagraphIndex = Math.floor(Math.random() * sourceOptions.length);
+        const selectedList = sourceOptions[randomParagraphIndex];
+        
+        // Shuffle the sentences within that paragraph for extra variety
+        currentParagraph = [...selectedList].sort(() => 0.5 - Math.random()).slice(0, 5);
         
         document.getElementById('menu-screen').classList.add('hidden');
         document.getElementById('play-screen').classList.remove('hidden');
