@@ -242,9 +242,7 @@ function initSpeech() {
                 const input = document.getElementById('user-input');
 
                 // Append instead of overwrite
-                input.value = input.value 
-                    ? input.value + " " + text 
-                    : text;
+                input.value = text;
             }
         };
 
